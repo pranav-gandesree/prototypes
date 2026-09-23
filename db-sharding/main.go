@@ -90,7 +90,7 @@ func (s *ShardedDB) InsertUser(user User) error {
 	return nil
 }
 
-// get a user from the correct shard
+// get the user from the correct shard
 func (s *ShardedDB) GetUser(userId int) (*User, error) {
 	ctx := context.Background()
 
