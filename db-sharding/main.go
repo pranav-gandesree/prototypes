@@ -54,6 +54,7 @@ func (s *ShardedDB) ConnectToDB() error {
 }
 
 // decide which shard gets the user
+// TODO: implement consistant hashing here later
 func (s *ShardedDB) GetShard(userId int) (*pgx.Conn, int) {
 	shardId := userId % 3
 
@@ -113,23 +114,15 @@ func (s *ShardedDB) GetUser(userId int) (*User, error) {
 		return nil, err
 	}
 
-	log.Printf(
-		"User %d read from shard %d",
-		userId,
-		shardID,
-	)
+	log.Printf("User %d read from shard %d", userId, shardID)
 
 	return &user, nil
 }
 
 // POST /users
-func (s *ShardedDB) CreateUserHandler(w http.ResponseWriter,r *http.Request) {
+func (s *ShardedDB) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(
-			w,
-			"method not allowed",
-			http.StatusMethodNotAllowed,
-		)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -137,11 +130,7 @@ func (s *ShardedDB) CreateUserHandler(w http.ResponseWriter,r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
-		http.Error(
-			w,
-			"invalid JSON",
-			http.StatusBadRequest,
-		)
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
 		return
 	}
 
@@ -149,18 +138,11 @@ func (s *ShardedDB) CreateUserHandler(w http.ResponseWriter,r *http.Request) {
 	if err != nil {
 		log.Printf("insert failed: %v", err)
 
-		http.Error(
-			w,
-			"failed to insert user",
-			http.StatusInternalServerError,
-		)
+		http.Error(w, "failed to insert user", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set(
-		"Content-Type",
-		"application/json",
-	)
+	w.Header().Set("Content-Type", "application/json")
 
 	w.WriteHeader(http.StatusCreated)
 
@@ -168,7 +150,7 @@ func (s *ShardedDB) CreateUserHandler(w http.ResponseWriter,r *http.Request) {
 }
 
 // GET /users/{id}
-func (s *ShardedDB) GetUserHandler(w http.ResponseWriter, r *http.Request){
+func (s *ShardedDB) GetUserHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(
 			w,
@@ -178,29 +160,17 @@ func (s *ShardedDB) GetUserHandler(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	// URL:
 	// /users/123
-	parts := strings.Split(
-		strings.Trim(r.URL.Path, "/"),
-		"/",
-	)
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 
 	if len(parts) != 2 {
-		http.Error(
-			w,
-			"invalid URL",
-			http.StatusBadRequest,
-		)
+		http.Error(w, "invalid URL", http.StatusBadRequest)
 		return
 	}
 
 	userID, err := strconv.Atoi(parts[1])
 	if err != nil {
-		http.Error(
-			w,
-			"invalid user ID",
-			http.StatusBadRequest,
-		)
+		http.Error(w, "invalid user ID", http.StatusBadRequest)
 		return
 	}
 
@@ -208,28 +178,17 @@ func (s *ShardedDB) GetUserHandler(w http.ResponseWriter, r *http.Request){
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			http.Error(
-				w,
-				"user not found",
-				http.StatusNotFound,
-			)
+			http.Error(w, "user not found", http.StatusNotFound)
 			return
 		}
 
 		log.Printf("query failed: %v", err)
 
-		http.Error(
-			w,
-			"failed to get user",
-			http.StatusInternalServerError,
-		)
+		http.Error(w, "failed to get user", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set(
-		"Content-Type",
-		"application/json",
-	)
+	w.Header().Set("Content-Type", "application/json")
 
 	json.NewEncoder(w).Encode(user)
 }
@@ -242,24 +201,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// POST /users
-	http.HandleFunc(
-		"/users",
-		db.CreateUserHandler,
-	)
+	http.HandleFunc("/users", db.CreateUserHandler)
 
-	// GET /users/{id}
-	http.HandleFunc(
-		"/users/",
-		db.GetUserHandler,
-	)
+	http.HandleFunc("/users/", db.GetUserHandler)
 
 	log.Println("HTTP server running on :8080")
 
-	err = http.ListenAndServe(
-		":8080",
-		nil,
-	)
+	err = http.ListenAndServe(":8080", nil)
 
 	if err != nil {
 		log.Fatal(err)
